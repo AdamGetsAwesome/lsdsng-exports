@@ -1,0 +1,29 @@
+<html>
+<head>
+    <title>lsdsng to html/json/midi</title>
+</head>
+<body>
+  <p>
+    Convert your LSDSNG data to HTML, JSON, or even a MIDI file.
+  </p>
+
+<form id="uploadForm" action="/" enctype="multipart/form-data" method="post">
+  <p>
+    Choose .lsdsng file:<br>
+    <input type="file" id="file" name="upload" accept=".lsdsng">
+  </p>
+  <p>    
+    Output:<br>
+    <input type="radio" name="output" value="html" checked> HTML<br>
+    <input type="radio" name="output" value="json"> JSON<br>
+    <input type="radio" name="output" value="midi"> MIDI (Returns note data in a 4 track midi file.)<br>
+  </p>
+  <p>
+    <input type="submit" id="submit" value="submit" action="/">    
+  </p>
+  <p>
+    If you end up using this, say hi on <a href="https://twitter.com/adamgetsawesome">Twitter</a>
+  </p>
+</form>
+</body>
+</html>

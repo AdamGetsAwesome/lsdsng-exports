@@ -1,0 +1,28 @@
+{
+  "name": "lsdsng_to_html",
+  "version": "0.0.1",
+  "description": "Convert your LSDSNG to HTML/JSON/MIDI",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.16.4",
+    "formidable": "^1.2.1"
+  },
+  "engines": {
+    "node": "8.x"
+  },
+  "repository": {
+    "url": "https://glitch.com/~lsdsng-to-html"
+  },
+  "license": "MIT",
+  "keywords": [
+    "node",
+    "glitch",
+    "express",
+    "lsdj",
+    "lsdsng",
+    "midi"
+  ]
+}
