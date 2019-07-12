@@ -468,8 +468,8 @@ exports.makeMIDI = function(data) {
     let lastEvent = 0;
     let currNote;
     let lastNote;
-    let noteKilled = true;
     let noteKillTime;
+    let delayTime;
     // create new array for the current track
     tracks.push([]);
     // add track name (just the number of the track)
@@ -498,22 +498,23 @@ exports.makeMIDI = function(data) {
                   lastEvent += 120;
                 }
                 else {
-                  currNote += MIDIOFFSET+transpose
-                  noteKillTime = 20*findCommandInTable(data, data.phrases.instruments[currPhrase][k], 8);
-                  if (!noteKilled) {
+                  currNote += MIDIOFFSET+transpose;
+                  if (EFFECTS[data.phrases.fx[currPhrase][k]] == 'D') {
+                    delayTime = 20*data.phrases.fxval[currPhrase][k];
+                  }
+                  if (noteKillTime < lastEvent && noteKillTime > 0) {
+                    tracks[channel].push(...[...deltaTime(noteKillTime), 0x80+channel, lastNote, 0x0]);
+                    lastEvent -= noteKillTime;
+                  }
+                  else {
                     tracks[channel].push(...[...deltaTime(lastEvent), 0x80+channel, lastNote, 0x0]);
                     lastEvent = 0;
                   }
+                  noteKillTime = 20*findCommandInTable(data, data.phrases.instruments[currPhrase][k], 8);
                   tracks[channel].push(...[...deltaTime(lastEvent), 0x90+channel, currNote, 0x70]);
                   lastEvent = 120;
-                  noteKilled = false;
                   lastNote = currNote;
                 }
-              }
-              if (noteKillTime > 0 && lastEvent > noteKillTime) {
-                tracks[channel].push(...[...deltaTime(noteKillTime), 0x80+channel, lastNote, 0x0]);
-                lastEvent = 120-noteKillTime%120;
-                noteKilled = true;
               }
             }
           }
