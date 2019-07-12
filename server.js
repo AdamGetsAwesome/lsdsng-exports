@@ -3,7 +3,11 @@ const app = express();
 const formidable = require('formidable');
 
 const fs = require('fs');
-const lsdsng = require('./lsdsng')
+const lsdsng = require('./lsdsng');
+let port = process.env.PORT;
+if (!port) {
+  port = 8080;
+}
 app.use(express.static('public'));
 app.get('/', function (req, res){
   res.sendFile(__dirname + '/views/index.html');
@@ -19,14 +23,14 @@ app.post('/', function (req, res) {
   form.on('fileBegin', function (name, file){
   });
 
-  form.on('file', function (name, file){
+  form.on('file', function (name, file) {
     fs.readFile(file.path, function(err, data) {
       try {
         d = lsdsng.unpack(data);
       }
       catch (err) {
         res.send(err);
-        return
+        return;
       }
       if (output == 'html') {
         d = lsdsng.makeHTML(d);
@@ -49,6 +53,6 @@ app.post('/', function (req, res) {
 });
 
 
-const listener = app.listen(process.env.PORT, function() {
+const listener = app.listen(port, function() {
   console.log('Your app is listening on port ' + listener.address().port);
 });
