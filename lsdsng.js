@@ -499,10 +499,17 @@ exports.makeMIDI = function(data) {
                 }
                 else {
                   currNote += MIDIOFFSET+transpose;
+                  if (delayTime < lastEvent && delayTime > 0) {
+                    tracks[channel].push(...[...deltaTime(delayTime), 0x90+channel, lastNote, 0x70]);
+                    lastEvent -= delayTime;
+                  }
                   if (EFFECTS[data.phrases.fx[currPhrase][k]] == 'D') {
                     delayTime = 20*data.phrases.fxval[currPhrase][k];
                   }
-                  if (noteKillTime < lastEvent && noteKillTime > 0) {
+                  else {
+                    delayTime = 0;
+                  }
+                  if (noteKillTime < lastEvent + delayTime && noteKillTime > 0) {
                     tracks[channel].push(...[...deltaTime(noteKillTime), 0x80+channel, lastNote, 0x0]);
                     lastEvent -= noteKillTime;
                   }
@@ -510,9 +517,14 @@ exports.makeMIDI = function(data) {
                     tracks[channel].push(...[...deltaTime(lastEvent), 0x80+channel, lastNote, 0x0]);
                     lastEvent = 0;
                   }
+                  if (delayTime == 0) {
+                    tracks[channel].push(...[...deltaTime(lastEvent), 0x90+channel, currNote, 0x70]);
+                    lastEvent = 120;
+                  }
+                  else {
+                    lastEvent += 120
+                  }
                   noteKillTime = 20*findCommandInTable(data, data.phrases.instruments[currPhrase][k], 8);
-                  tracks[channel].push(...[...deltaTime(lastEvent), 0x90+channel, currNote, 0x70]);
-                  lastEvent = 120;
                   lastNote = currNote;
                 }
               }
