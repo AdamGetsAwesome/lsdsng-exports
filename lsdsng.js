@@ -123,7 +123,6 @@ exports.unpack = function (data) {
       // otherwise if following byte == 0xf1, 
       // add DEFAULT_INSTRUMENT to decompressedData, data[i+2] times
       else if (data[i+1] == 0xf1) {
-        // console.log('default instrument');
         for (let j = 0; j < data[i+2]; j++) {
           decompressedData.push(...DEFAULT_INSTRUMENT);
         }
@@ -132,7 +131,6 @@ exports.unpack = function (data) {
       // otherwise if following byte == 0xf0, 
       // add DEFAULT_WAV to decompressedData, data[i+2] times
       else if (data[i+1] == 0xf0) {
-        // console.log('default wave');
         for (let j = 0; j < data[i+2]; j++) {
           decompressedData.push(...DEFAULT_WAV);
         }
@@ -173,8 +171,8 @@ exports.unpack = function (data) {
   // 96 bytes empty data, skip it
   i+=96;
   // grooves
-  for (i; i < 0x1290; i+=2) {
-    lsdsngObj.grooves.push(decompressedData.slice(i, i+2));
+  for (i; i < 0x1290; i+=16) {
+    lsdsngObj.grooves.push(decompressedData.slice(i, i+16));
   }
   // chains
   for (i; i < 0x1690; i+=4) {
@@ -435,7 +433,7 @@ function toBytes(num, len) {
 }
 function findCommandInTable(data, ins, com) {
   if (ins > 0x3f) {
-    return -1
+    return Number.MAX_VALUE;
   }
   let table = data.instruments.params[ins][6]-32;
   if ( table >= 0) {
@@ -448,14 +446,26 @@ function findCommandInTable(data, ins, com) {
       }
     }
   }
-  return -1
+  return Number.MAX_VALUE;
 }
 exports.makeMIDI = function(data) {
-  let midiTempo = Math.round((1/(data.tempo/60.0))*1000000);
+  let grooveSum = 0;
+  let grooveLength = 0;
+  for (let i = 0; i < 16; i++) {
+    grooveSum += data.grooves[0][i];
+    if (data.grooves[0][i] == 0) {
+      grooveLength = i;
+      break;
+    }
+  }
+  let ticksPerQuarter = toBytes(grooveSum*1.0/grooveLength*80, 2);
+  console.log(ticksPerQuarter);
+  let adjustedTempo = (data.tempo*grooveLength*6.0)/grooveSum;
+  let midiTempo = Math.round((1/(adjustedTempo/60.0))*1000000);
   let tracks = [];
   let trackLength;
   // standard midi file header for multitrack with 5 tracks (1st track is just tempo and general midi info)
-  let mThd = [0x4D,0x54,0x68, 0x64, 0x00, 0x00, 0x00, 0x06, 0x00, 0x01, 0x00, 0x05, 0x01, 0xE0];
+  let mThd = [0x4D,0x54,0x68, 0x64, 0x00, 0x00, 0x00, 0x06, 0x00, 0x01, 0x00, 0x05, ...ticksPerQuarter];
   // standard midi track header
   let mTrk = [0x4D, 0x54, 0x72, 0x6B];
   // time signature and key signature data
@@ -463,20 +473,30 @@ exports.makeMIDI = function(data) {
   // Throw midi tempo into the initial midi data
   midiData.push(...[0x00,0xFF,0x51,0x03,...toBytes(midiTempo, 3)]);
   // loop through channels
+  let currEvent;
+  let lastEvent;
+  let eventList = []
   for (let channel = 0; channel < 4; channel++) {
     // keep track of time since last event
-    let lastEvent = 0;
+    let lastEventTime = 0;
     let currNote;
     let lastNote;
     let noteKillTime;
     let delayTime;
+    let groove = 0;
+    let grooveStep = 0;
+    lastEvent = {
+      'time': 0,
+    }
     // create new array for the current track
     tracks.push([]);
+    eventList.push([]);
+    eventList[channel].push(lastEvent);
     // add track name (just the number of the track)
     tracks[channel].push(0x00,0xff,0x03,0x01, channel+0x31);
     let currChan = CHANS[channel];
     // loop through chains
-    for (let i = 0; i < 255; i++) {
+    for (let i = 0; i < 254; i++) {
       let currChain = data.songchains[currChan][i];
       if (currChain != 255) {
         // loop through phrases
@@ -487,46 +507,42 @@ exports.makeMIDI = function(data) {
             transpose = transpose-256;
           }
           if (currPhrase != 255) {
-            // loop through notes
+            // loop through notes and create events for all note starts
             for (let k = 0; k < 16; k++) {
               if (EFFECTS[data.phrases.fx[currPhrase][k]] == 'H') {
                 k+=16;
               }
               else {
-                currNote = data.phrases.notes[currPhrase][k];
-                if (currNote == 0) {
-                  lastEvent += 120;
+                if (EFFECTS[data.phrases.fx[currPhrase][k]] == 'G') {
+                  groove = data.phrases.fxval[currPhrase][k];
+                  grooveStep = 0;
                 }
-                else {
+                if (data.grooves[groove][grooveStep] == 0 || grooveStep > 15) {
+                  grooveStep = 0;
+                }
+                currNote = data.phrases.notes[currPhrase][k];
+                if (currNote != 0) {
                   currNote += MIDIOFFSET+transpose;
-                  if (delayTime < lastEvent && delayTime > 0) {
-                    tracks[channel].push(...[...deltaTime(delayTime), 0x90+channel, lastNote, 0x70]);
-                    lastEvent -= delayTime;
-                  }
                   if (EFFECTS[data.phrases.fx[currPhrase][k]] == 'D') {
                     delayTime = 20*data.phrases.fxval[currPhrase][k];
                   }
                   else {
                     delayTime = 0;
                   }
-                  if (noteKillTime < lastEvent + delayTime && noteKillTime > 0) {
-                    tracks[channel].push(...[...deltaTime(noteKillTime), 0x80+channel, lastNote, 0x0]);
-                    lastEvent -= noteKillTime;
-                  }
-                  else {
-                    tracks[channel].push(...[...deltaTime(lastEvent), 0x80+channel, lastNote, 0x0]);
-                    lastEvent = 0;
-                  }
-                  if (delayTime == 0) {
-                    tracks[channel].push(...[...deltaTime(lastEvent), 0x90+channel, currNote, 0x70]);
-                    lastEvent = 120;
-                  }
-                  else {
-                    lastEvent += 120
-                  }
                   noteKillTime = 20*findCommandInTable(data, data.phrases.instruments[currPhrase][k], 8);
-                  lastNote = currNote;
+                  currEvent = {
+                    'time': lastEventTime+delayTime,
+                    'note': currNote,
+                    'kill': noteKillTime
+                  }
+                  if (currEvent.time <= lastEvent.time) {
+                    eventList[channel].pop();
+                  }
+                  eventList[channel].push(currEvent);
+                  lastEvent = eventList[channel][eventList[channel].length -1];
                 }
+                lastEventTime+=20*data.grooves[groove][grooveStep];
+                grooveStep+=1
               }
             }
           }
@@ -537,8 +553,24 @@ exports.makeMIDI = function(data) {
         }
       }
     }
-    tracks[channel].push(...[deltaTime(lastEvent), 0x80+channel, lastNote, 0x0]);
-    tracks[channel].push(...[0x00, 0xff, 0x2f, 0x00])
+    // process note off and write the track
+    lastEvent = eventList[channel][0];
+    tracks[channel].push(...[...deltaTime(0x0), 0x90+channel, lastEvent.note, 0x70]);
+    for (let event = 1; event < eventList[channel].length; event++) {
+      currEvent = eventList[channel][event];
+      if (currEvent.time > lastEvent.time + lastEvent.kill) {
+        tracks[channel].push(...[...deltaTime(lastEvent.kill), 0x80+channel, lastEvent.note, 0x0]);
+        tracks[channel].push(...[...deltaTime(currEvent.time - (lastEvent.time + lastEvent.kill)), 0x90+channel, currEvent.note, 0x70]);
+      }
+      else {
+        tracks[channel].push(...[...deltaTime(currEvent.time - lastEvent.time), 0x80+channel, lastEvent.note, 0x0]);
+        tracks[channel].push(...[...deltaTime(0), 0x90+channel, currEvent.note, 0x70]);
+      }
+      lastEvent = currEvent;
+    }
+    // push last note kill
+    tracks[channel].push(...[...deltaTime(Math.min(currEvent.kill, 120)), 0x80+channel, currEvent.note, 0x0]);
+    tracks[channel].push(...[0x00, 0xff, 0x2f, 0x00]);
     trackLength = tracks[channel].length;
     tracks[channel].unshift(...toBytes(trackLength, 4));
     tracks[channel].unshift(...mTrk);
