@@ -450,7 +450,7 @@ function findCommandInTable(data, ins, com) {
 }
 exports.makeMIDI = function(data) {
   let grooveSum = 0;
-  let grooveLength = 0;
+  let grooveLength = 16;
   for (let i = 0; i < 16; i++) {
     grooveSum += data.grooves[0][i];
     if (data.grooves[0][i] == 0) {
@@ -459,7 +459,6 @@ exports.makeMIDI = function(data) {
     }
   }
   let ticksPerQuarter = toBytes(grooveSum*1.0/grooveLength*80, 2);
-  console.log(ticksPerQuarter);
   let adjustedTempo = (data.tempo*grooveLength*6.0)/grooveSum;
   let midiTempo = Math.round((1/(adjustedTempo/60.0))*1000000);
   let tracks = [];
