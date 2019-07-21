@@ -448,6 +448,38 @@ function findCommandInTable(data, ins, com) {
   }
   return Number.MAX_VALUE;
 }
+function processTempoMetaTrack(metaEventList, tempoAdjust) {
+  function compare(a,b) {
+    let comparison = 0;
+    if (a.time > b.time) {
+      comparison = 1
+    }
+    else if (a.time < b.time) {
+      comparison = -1
+    }
+    return comparison
+  }
+  let prefix = [0xff, 0x51, 0x03]
+  let sortedEvents = []
+  let trackOutput = []
+  let seen = {}
+  for (let i = 0; i < metaEventList.length; i++) {
+    temp = String(metaEventList[i].time) + String(metaEventList[i].type) + String(metaEventList[i].val);
+    if (!(temp in seen)) {
+      seen[temp] = true;
+      sortedEvents.push(metaEventList[i]);
+    }
+  }
+  sortedEvents = sortedEvents.sort(compare);
+  let lastEvent = sortedEvents[0];
+  trackOutput.push(...deltaTime(lastEvent.time+5), ...prefix, ...toBytes(Math.round((1/(lastEvent.val*tempoAdjust/60))*1000000), 3));
+  for (let i = 1; i < sortedEvents.length; i++) {
+    let currEvent = sortedEvents[i];
+    trackOutput.push(...deltaTime(currEvent.time-lastEvent.time), ...prefix, ...toBytes(Math.round((1/(currEvent.val*tempoAdjust/60))*1000000), 3));
+    lastEvent = currEvent;
+  }
+  return trackOutput
+}
 exports.makeMIDI = function(data) {
   let grooveSum = 0;
   let grooveLength = 16;
@@ -468,18 +500,18 @@ exports.makeMIDI = function(data) {
   // standard midi track header
   let mTrk = [0x4D, 0x54, 0x72, 0x6B];
   // time signature and key signature data
-  let midiData = [0x00,0xFF,0x58,0x04,0x04,0x02,0x18,0x08,0x00,0xFF,0x59,0x02,0x00,0x00];
+  let metaTrack = [0x00,0xFF,0x58,0x04,0x04,0x02,0x18,0x08,0x00,0xFF,0x59,0x02,0x00,0x00];
   // Throw midi tempo into the initial midi data
-  midiData.push(...[0x00,0xFF,0x51,0x03,...toBytes(midiTempo, 3)]);
-  // loop through channels
+  metaTrack.push(...[0x00,0xFF,0x51,0x03,...toBytes(midiTempo, 3)]);
   let currEvent;
   let lastEvent;
-  let eventList = []
+  let eventList = [];
+  let metaEventList = [];
+  // loop through channels
   for (let channel = 0; channel < 4; channel++) {
     // keep track of time since last event
     let lastEventTime = 0;
     let currNote;
-    let lastNote;
     let noteKillTime;
     let delayTime;
     let groove = 0;
@@ -512,6 +544,9 @@ exports.makeMIDI = function(data) {
                 k+=16;
               }
               else {
+                if (EFFECTS[data.phrases.fx[currPhrase][k]] == 'T') {
+                  metaEventList.push({'time': lastEventTime, 'type': 'Tempo', 'val': data.phrases.fxval[currPhrase][k]});
+                }
                 if (EFFECTS[data.phrases.fx[currPhrase][k]] == 'G') {
                   groove = data.phrases.fxval[currPhrase][k];
                   grooveStep = 0;
@@ -574,7 +609,10 @@ exports.makeMIDI = function(data) {
     tracks[channel].unshift(...toBytes(trackLength, 4));
     tracks[channel].unshift(...mTrk);
   }
-  let metaTrack = [...midiData, 0x00, 0xff, 0x2f, 0x00];
+  if (metaEventList.length > 0) {
+    metaTrack.push(...processTempoMetaTrack(metaEventList, adjustedTempo/data.tempo));
+  }
+  metaTrack.push(...[0x00, 0xff, 0x2f, 0x00]);
   metaTrack.unshift(...toBytes(metaTrack.length, 4));
   metaTrack.unshift(...mTrk);
   let midiOutput = Uint8Array.from(mThd.concat(...metaTrack, ...tracks));
