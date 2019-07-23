@@ -512,6 +512,7 @@ exports.makeMIDI = function(data) {
     // keep track of time since last event
     let lastEventTime = 0;
     let currNote;
+    let currInstrument;
     let noteKillTime;
     let delayTime;
     let groove = 0;
@@ -556,14 +557,20 @@ exports.makeMIDI = function(data) {
                 }
                 currNote = data.phrases.notes[currPhrase][k];
                 if (currNote != 0) {
-                  currNote += MIDIOFFSET+transpose;
+                  currInstrument = data.phrases.instruments[currPhrase][k];
+                  if (data.instruments.params[currInstrument][5]&32) {
+                    currNote += MIDIOFFSET;
+                  }
+                  else {
+                    currNote += MIDIOFFSET+transpose;
+                  }
                   if (EFFECTS[data.phrases.fx[currPhrase][k]] == 'D') {
                     delayTime = 20*data.phrases.fxval[currPhrase][k];
                   }
                   else {
                     delayTime = 0;
                   }
-                  noteKillTime = 20*findCommandInTable(data, data.phrases.instruments[currPhrase][k], 8);
+                  noteKillTime = 20*findCommandInTable(data, currInstrument, 8);
                   currEvent = {
                     'time': lastEventTime+delayTime,
                     'note': currNote,
