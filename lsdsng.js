@@ -575,6 +575,9 @@ exports.makeMIDI = function(data) {
                   eventList[channel].push(currEvent);
                   lastEvent = eventList[channel][eventList[channel].length -1];
                 }
+                if (EFFECTS[data.phrases.fx[currPhrase][k]] == 'K') {
+                  eventList[channel][eventList[channel].length-1].kill = Math.min(data.phrases.fxval[currPhrase][k]*20, lastEvent.kill);
+                }
                 lastEventTime+=20*data.grooves[groove][grooveStep];
                 grooveStep+=1
               }
