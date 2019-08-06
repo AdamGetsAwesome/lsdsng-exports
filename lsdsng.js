@@ -557,7 +557,9 @@ exports.makeMIDI = function(data) {
                 }
                 currNote = data.phrases.notes[currPhrase][k];
                 if (currNote != 0) {
-                  currInstrument = data.phrases.instruments[currPhrase][k];
+                  if (data.phrases.instruments[currPhrase][k] != 255) {
+                    currInstrument = data.phrases.instruments[currPhrase][k];
+                  }
                   if (data.instruments.params[currInstrument][5]&32) {
                     currNote += MIDIOFFSET;
                   }
