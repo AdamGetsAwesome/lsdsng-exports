@@ -1,28 +1,29 @@
 <html>
 <head>
+    <link rel = "stylesheet" type = "text/css" href = "styles.css" />
     <title>lsdsng to html/json/midi</title>
 </head>
 <body>
   <p>
     Convert your LSDSNG data to HTML, JSON, or even a MIDI file.
+    <br><br>
+    Choose .lsdsng or .lsdprj file, select output type, and click convert.
   </p>
 
 <form id="uploadForm" action="/" enctype="multipart/form-data" method="post">
   <p>
-    Choose .lsdsng file:<br>
-    <input type="file" id="file" name="upload" accept=".lsdsng">
+    <input type="file" id="file" name="upload" accept=".lsdsng, .lsdprj">
   </p>
   <p>    
-    Output:<br>
-    <input type="radio" name="output" value="html" checked> HTML<br>
-    <input type="radio" name="output" value="json"> JSON<br>
-    <input type="radio" name="output" value="midi"> MIDI (Returns note data in a 4 track midi file.)<br>
+    <input type="radio" id="htmlradio" name="output" value="html" checked>
+    <label for="htmlradio">HTML</label>
+    <input type="radio" id="jsonradio" name="output" value="json">
+    <label for="jsonradio">JSON</label>
+    <input type="radio" id="midiradio" name="output" value="midi">
+    <label for="midiradio">MIDI</label>
   </p>
   <p>
-    <input type="submit" id="submit" value="submit" action="/">    
-  </p>
-  <p>
-    If you end up using this, say hi on <a href="https://twitter.com/adamgetsawesome">Twitter</a>
+    <input type="submit" id="submit" value="Convert" action="/">    
   </p>
 </form>
 </body>
