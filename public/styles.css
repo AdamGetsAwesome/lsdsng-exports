@@ -1,6 +1,35 @@
-body {
+* {
   font-family: monospace;
+
 }
+input[type=radio] {
+  position: absolute;
+  visibility: hidden;
+  display: none;
+}
+
+label {
+  display: inline-block;
+  cursor: pointer;
+  padding: 5px 20px;
+  border-radius: 10px;
+  border-style: solid;
+  border-color: #000000;
+}
+
+input[type=radio]:checked + label {
+  background-color: #999;
+}
+
+input[type=submit] {
+  cursor: pointer;
+  border: 0px;
+  background-color: #ffddff;
+  padding: 5px 20px;
+  border-radius: 10px;
+  border-color: #000000;
+}
+
 .dt {
 	display: table;
 }
