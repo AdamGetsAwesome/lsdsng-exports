@@ -815,9 +815,13 @@ exports.makeMIDI = function(data) {
                     currInstrument = data.phrases.instruments[currPhrase][k];
                   }
                   if (currInstrument == 0x40 || data.instruments.params[currInstrument][5] & 32) {
-                    currNote += MIDIOFFSET;
+                    if (currNote + MIDIOFFSET < 128) {
+                      currNote += MIDIOFFSET;
+                    }
                   } else {
-                    currNote += MIDIOFFSET + transpose;
+                    if (currNote + MIDIOFFSET + transpose < 128) {
+                      currNote += MIDIOFFSET + transpose;
+                    }
                   }
                   if (EFFECTS[data.phrases.fx[currPhrase][k]] == "D") {
                     delayTime = 20 * data.phrases.fxval[currPhrase][k];
